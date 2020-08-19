@@ -1,5 +1,5 @@
-const { Toolkit } = require('actions-toolkit')
-const { execSync } = require('child_process')
+const {Toolkit} = require('actions-toolkit')
+const {execSync} = require('child_process')
 
 // Change working directory if user defined PACKAGEJSON_DIR
 if (process.env.PACKAGEJSON_DIR) {
@@ -15,10 +15,10 @@ Toolkit.run(async tools => {
   if (!event.commits) {
     console.log("Couldn't find any commits in this event, incrementing patch version...")
   }
-  
+
   const messages = event.commits ? event.commits.map(commit => commit.message + '\n' + commit.body) : []
 
-  const commitMessage = 'version bump to'
+  const commitMessage = 'Release'
   const isVersionBump = messages.map(message => message.toLowerCase().includes(commitMessage)).includes(true)
   if (isVersionBump) {
     tools.exit.success('No action necessary!')
@@ -48,7 +48,7 @@ Toolkit.run(async tools => {
       ['version', '--allow-same-version=true', '--git-tag-version=false', current])
     console.log('current:', current, '/', 'version:', version)
     let newVersion = execSync(`npm version --git-tag-version=false ${version}`).toString().trim()
-    await tools.runInWorkspace('git', ['commit', '-a', '-m', `ci: ${commitMessage} ${newVersion}`])
+    await tools.runInWorkspace('git', ['commit', '-a', '-m', `${commitMessage} ${newVersion}`])
 
     // now go to the actual branch to perform the same versioning
     await tools.runInWorkspace('git', ['checkout', currentBranch])
@@ -60,7 +60,7 @@ Toolkit.run(async tools => {
     console.log('new version:', newVersion)
     try {
       // to support "actions/checkout@v1"
-      await tools.runInWorkspace('git', ['commit', '-a', '-m', `ci: ${commitMessage} ${newVersion}`])
+      await tools.runInWorkspace('git', ['commit', '-a', '-m', `${commitMessage} ${newVersion}`])
     } catch (e) {
       console.warn('git commit failed because you are using "actions/checkout@v2"; ' +
         'but that doesnt matter because you dont need that git commit, thats only for "actions/checkout@v1"')
@@ -69,8 +69,6 @@ Toolkit.run(async tools => {
     const remoteRepo = `https://${process.env.GITHUB_ACTOR}:${process.env.GITHUB_TOKEN}@github.com/${process.env.GITHUB_REPOSITORY}.git`
     // console.log(Buffer.from(remoteRepo).toString('base64'))
     await tools.runInWorkspace('git', ['tag', newVersion])
-    await tools.runInWorkspace('git', ['push', remoteRepo, '--follow-tags'])
-    await tools.runInWorkspace('git', ['push', remoteRepo, '--tags'])
   } catch (e) {
     tools.log.fatal(e)
     tools.exit.failure('Failed to bump version')
